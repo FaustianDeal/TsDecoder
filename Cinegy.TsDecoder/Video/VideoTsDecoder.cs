@@ -67,7 +67,7 @@ namespace Cinegy.TsDecoder.Video
                 TsService.OnVideoNalUnitsReady -= TsService_OnVideoNalUnitsReady;
         }
 
-        public bool FindVideoService(TsDecoder tsDecoder, out EsInfo esStreamInfo)
+        public bool FindVideoService(TransportStream.TsDecoder tsDecoder, out EsInfo esStreamInfo)
         {
             if (tsDecoder == null) throw new InvalidOperationException("Null reference to TS Decoder");
 
@@ -115,7 +115,7 @@ namespace Cinegy.TsDecoder.Video
             }
         }
 
-        private void Setup(TsDecoder tsDecoder)
+        private void Setup(TransportStream.TsDecoder tsDecoder)
         {
             EsInfo esStreamInfo;
             if (FindVideoService(tsDecoder, out esStreamInfo))
@@ -143,8 +143,9 @@ namespace Cinegy.TsDecoder.Video
 
             if (tsPacket.PayloadUnitStartIndicator)
             {
-                if (tsPacket.PesHeader != null && tsPacket.PesHeader.Pts > -1)
+                if (tsPacket.PesHeader.Pts > -1)
                     LastPts = tsPacket.PesHeader.Pts;
+
 
                 if (_currentVideoPes != null)
                 {
@@ -164,7 +165,7 @@ namespace Cinegy.TsDecoder.Video
     // These extension methods are stubs and need proper implementation
     public static class TsDecoderExtensions
     {
-        public static ProgramMapTable GetSelectedPmt(TsDecoder decoder, ushort programNumber)
+        public static ProgramMapTable GetSelectedPmt(TransportStream.TsDecoder decoder, ushort programNumber)
         {
             if (decoder.ProgramMapTables == null) return null;
             foreach (var pmt in decoder.ProgramMapTables)
@@ -175,7 +176,7 @@ namespace Cinegy.TsDecoder.Video
             return null;
         }
 
-        public static EsInfo GetFirstEsStreamForProgramNumber(TsDecoder decoder, ushort programNumber, int streamType)
+        public static EsInfo GetFirstEsStreamForProgramNumber(TransportStream.TsDecoder decoder, ushort programNumber, int streamType)
         {
             var pmt = GetSelectedPmt(decoder, programNumber);
             if (pmt == null || pmt.EsStreams == null) return null;

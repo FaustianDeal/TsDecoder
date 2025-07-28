@@ -28,7 +28,8 @@ namespace Cinegy.TsDecoder.Video
             
             var startOfData = 6;
             
-            if (pes.OptionalPesHeader?.MarkerBits == 2) //optional PES header exists - minimum length is 3
+            if (!pes.OptionalPesHeader.Equals(default(PesHdr)) && pes.OptionalPesHeader.MarkerBits == 2)
+                //optional PES header exists - minimum length is 3
             {
                 startOfData += (ushort)(3 + pes.OptionalPesHeader.PesHeaderLength);
             }
