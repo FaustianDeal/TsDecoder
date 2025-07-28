@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>7.3</LangVersion>
 		<Version>4.0.0-alpha</Version>
 		<Authors>Lewis Kirkaldie</Authors>
 		<Company>Cinegy GmbH</Company>
