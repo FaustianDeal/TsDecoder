@@ -161,31 +161,4 @@ namespace Cinegy.TsDecoder.Video
             }
         }
     }
-
-    // These extension methods are stubs and need proper implementation
-    public static class TsDecoderExtensions
-    {
-        public static ProgramMapTable GetSelectedPmt(TransportStream.TsDecoder decoder, ushort programNumber)
-        {
-            if (decoder.ProgramMapTables == null) return null;
-            foreach (var pmt in decoder.ProgramMapTables)
-            {
-                if (pmt.ProgramNumber == programNumber)
-                    return pmt;
-            }
-            return null;
-        }
-
-        public static EsInfo GetFirstEsStreamForProgramNumber(TransportStream.TsDecoder decoder, ushort programNumber, int streamType)
-        {
-            var pmt = GetSelectedPmt(decoder, programNumber);
-            if (pmt == null || pmt.EsStreams == null) return null;
-            foreach (var es in pmt.EsStreams)
-            {
-                if (es.StreamType == streamType)
-                    return es;
-            }
-            return null;
-        }
-    }
 }
