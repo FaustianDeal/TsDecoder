@@ -73,7 +73,7 @@ namespace Cinegy.TsDecoder.Tests.TransportStream
                     {
                         foreach (var program in decoder.ProgramMapTables)
                         {
-                            Console.WriteLine(decoder.GetServiceDescriptorForProgramNumber(program.ProgramNumber).ServiceName);
+                            //Console.WriteLine(decoder.GetServiceDescriptorForProgramNumber(program.ProgramNumber).ServiceName);
                             foreach (var esStream in program.EsStreams)
                             {
                                 Console.WriteLine($"\t0x{esStream.ElementaryPid:X4} - {DescriptorDictionaries.ShortElementaryStreamTypeDescriptions[esStream.StreamType]}");

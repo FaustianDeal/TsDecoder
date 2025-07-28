@@ -13,40 +13,42 @@
   limitations under the License.
 */
 
-namespace Cinegy.TsDecoder.Video;
-
-public enum H265NalUnitType
+namespace Cinegy.TsDecoder.Video
 {
-    Unspecified = 0,
-    CodedSliceNonIdrPicture = 1,
-    CodedSliceDataPartitionA = 2,
-    CodedSliceDataPartitionB= 3,
-    CodedSliceDataPartitionC = 4,
-    CodedSliceIdrPictureSlice = 5,
-    SupplementalEnhancementInfo = 6,
-    SequenceParameterSet = 7,
-    PictureParameterSet = 8,
-    AccessUnit = 9,
-    EndOfSequence = 10,
-    EndOfStream = 11,
-    Filler = 12,
-    SpsExtension = 13,
-    PrefixNalUnit = 14,
-    SubsetSps = 15,
-    DepthParameterSet = 16,
-    Reserved17 = 17,
-    Reserved18 = 18,
-    CodedSliceAuxCodedPicture = 19,
-    CodedSliceExtension = 20,
-    CodedSliceExtensionDepthViewComponent = 21,
-    Reserved22 = 22,
-    Reserved23 = 23,
-    Reserved24 = 24,
-    Unspecified25 = 25,
-    Unspecified26 = 26,
-    Unspecified27 = 27,
-    Unspecified28 = 28,
-    Unspecified29 = 29,
-    Unspecified30 = 30,
-    Unspecified31 = 31
+
+    public enum H265NalUnitType
+    {
+        Unspecified = 0,
+        CodedSliceNonIdrPicture = 1,
+        CodedSliceDataPartitionA = 2,
+        CodedSliceDataPartitionB = 3,
+        CodedSliceDataPartitionC = 4,
+        CodedSliceIdrPictureSlice = 5,
+        SupplementalEnhancementInfo = 6,
+        SequenceParameterSet = 7,
+        PictureParameterSet = 8,
+        AccessUnit = 9,
+        EndOfSequence = 10,
+        EndOfStream = 11,
+        Filler = 12,
+        SpsExtension = 13,
+        PrefixNalUnit = 14,
+        SubsetSps = 15,
+        DepthParameterSet = 16,
+        Reserved17 = 17,
+        Reserved18 = 18,
+        CodedSliceAuxCodedPicture = 19,
+        CodedSliceExtension = 20,
+        CodedSliceExtensionDepthViewComponent = 21,
+        Reserved22 = 22,
+        Reserved23 = 23,
+        Reserved24 = 24,
+        Unspecified25 = 25,
+        Unspecified26 = 26,
+        Unspecified27 = 27,
+        Unspecified28 = 28,
+        Unspecified29 = 29,
+        Unspecified30 = 30,
+        Unspecified31 = 31
+    }
 }

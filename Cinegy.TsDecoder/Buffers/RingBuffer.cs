@@ -31,7 +31,8 @@ namespace Cinegy.TsDecoder.Buffers
         private bool _wrapped;
         private readonly bool _allowOverflow;
 
-        private readonly object _lockObj = new();
+        private readonly object _lockObj = new object();
+
         private readonly int _packetSize = 1500;
 
         private static readonly EventWaitHandle WaitHandle = new AutoResetEvent(false);

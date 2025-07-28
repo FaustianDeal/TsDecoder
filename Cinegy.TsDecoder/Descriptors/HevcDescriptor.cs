@@ -13,23 +13,25 @@
   limitations under the License.
 */
 
-namespace Cinegy.TsDecoder.Descriptors;
-
-public class HevcDescriptor : Descriptor
+namespace Cinegy.TsDecoder.Descriptors
 {
-    public byte ProfileSpace { get; set; }
-    
-    public bool TierFlag { get; set; }
-    
-    public byte ProfileIdc { get; set; }
 
-    public HevcDescriptor(byte[] stream, int start) : base(stream, start)
+    public class HevcDescriptor : Descriptor
     {
-        var idx = start + 2;
+        public byte ProfileSpace { get; set; }
 
-        ProfileSpace = (byte)((stream[idx] & 0b11000000) >> 6);
-        TierFlag = (stream[idx] & 0b00100000) == 0b00100000;
-        ProfileIdc = (byte)(stream[idx] & 0b00011111);
-        //TODO: unpack the reset of the descriptor
+        public bool TierFlag { get; set; }
+
+        public byte ProfileIdc { get; set; }
+
+        public HevcDescriptor(byte[] stream, int start) : base(stream, start)
+        {
+            var idx = start + 2;
+
+            ProfileSpace = (byte)((stream[idx] & 0b11000000) >> 6);
+            TierFlag = (stream[idx] & 0b00100000) == 0b00100000;
+            ProfileIdc = (byte)(stream[idx] & 0b00011111);
+            //TODO: unpack the reset of the descriptor
+        }
     }
 }

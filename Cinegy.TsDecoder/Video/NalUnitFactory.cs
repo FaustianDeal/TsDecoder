@@ -38,11 +38,16 @@ namespace Cinegy.TsDecoder.Video
             List<INalUnit> entities = null;
             if (streamType == 0x1b)
             {
-                entities = GetEntitiesFromData<H264NalUnit>(pes.Data[startOfData..], dataBufSize);
+                var h264Buffer = new byte[dataBufSize];
+                Array.Copy(pes.Data, startOfData, h264Buffer, 0, dataBufSize);
+                entities = GetEntitiesFromData<H264NalUnit>(h264Buffer, dataBufSize);
+
             }
             else if (streamType == 0x24)
             {
-                entities = GetEntitiesFromData<H265NalUnit>(pes.Data[startOfData..], dataBufSize);
+                var h265Buffer = new byte[dataBufSize];
+                Array.Copy(pes.Data, startOfData, h265Buffer, 0, dataBufSize);
+                entities = GetEntitiesFromData<H265NalUnit>(h265Buffer, dataBufSize);
             }
             
             OnVideoReady(entities);

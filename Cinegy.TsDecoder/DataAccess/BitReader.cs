@@ -51,15 +51,15 @@ namespace Cinegy.TsDecoder.DataAccess
         
         public uint Show_Bits(int n)
         {
-            switch (n)
-            {
-                case < 0:
-                    throw new Exception("ShowBits(): The value on N is negative");
-                case 0:
-                    return 0;
-                case > 32:
-                    throw new Exception("ShowBits(): The value on N is too big");
-            }
+            if (n < 0)
+                throw new Exception("ShowBits(): The value on N is negative");
+
+            if (n == 0)
+                return 0;
+
+            if (n > 32)
+                throw new Exception("ShowBits(): The value on N is too big");
+
 
             if (_pos + n > _buffer.Length * 8)
             {

@@ -13,12 +13,14 @@
   limitations under the License.
 */
 
-namespace Cinegy.TsDecoder.Descriptors;
-
-public class ExtensionDescriptor : Descriptor
+namespace Cinegy.TsDecoder.Descriptors
 {
-    public ExtensionDescriptor(byte[] stream, int start) : base(stream, start)
-    {
 
+    public class ExtensionDescriptor : Descriptor
+    {
+        public ExtensionDescriptor(byte[] stream, int start) : base(stream, start)
+        {
+
+        }
     }
 }

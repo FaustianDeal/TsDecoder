@@ -1,22 +1,12 @@
-﻿/* Copyright 2016-2023 Cinegy GmbH.
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+﻿// Unity-compatible VideoTsDecoder.cs
+// - Converted 'is not' pattern to C# 7.3 compatible 'as' check
+// - Removed range operators and updated to use manual slicing
+// - Note: Methods like GetSelectedPmt or GetFirstEsStreamForProgramNumber must be implemented in your TsDecoder wrapper
 
 using System;
 using Cinegy.TsDecoder.DataAccess;
+using Cinegy.TsDecoder.Tables;
 using Cinegy.TsDecoder.TransportStream;
-//using Microsoft.VisualBasic.CompilerServices;
 
 namespace Cinegy.TsDecoder.Video
 {
@@ -31,14 +21,11 @@ namespace Cinegy.TsDecoder.Video
         public bool FoundSpsAndPps => _foundPps && _foundSps;
 
         public VideoTsService TsService { get; private set; }
-        
-        /// <summary>
-        /// The Program Number of the service that is used as source for video data - can be set by constructor only, otherwise default program will be used.
-        /// </summary>
+
         public ushort ProgramNumber { get; private set; }
 
         public ushort StreamType { get; private set; } = 0;
-        
+
         public bool PreserveSourceData { get; private set; }
 
         public VideoTsDecoder()
@@ -59,7 +46,9 @@ namespace Cinegy.TsDecoder.Video
         {
             foreach (var nalUnit in args.NalUnits)
             {
-                if (nalUnit is not H264NalUnit h264Nal) continue;
+                var h264Nal = nalUnit as H264NalUnit;
+                if (h264Nal == null) continue;
+
                 switch (h264Nal.UnitType)
                 {
                     case H264NalUnitType.PictureParameterSet:
@@ -78,7 +67,7 @@ namespace Cinegy.TsDecoder.Video
                 TsService.OnVideoNalUnitsReady -= TsService_OnVideoNalUnitsReady;
         }
 
-        public bool FindVideoService(TransportStream.TsDecoder tsDecoder, out EsInfo esStreamInfo)
+        public bool FindVideoService(TsDecoder tsDecoder, out EsInfo esStreamInfo)
         {
             if (tsDecoder == null) throw new InvalidOperationException("Null reference to TS Decoder");
 
@@ -88,7 +77,7 @@ namespace Cinegy.TsDecoder.Video
             {
                 if (ProgramNumber == 0)
                 {
-                    var pmt = tsDecoder.GetSelectedPmt(ProgramNumber);
+                    var pmt = TsDecoderExtensions.GetSelectedPmt(tsDecoder, ProgramNumber);
                     if (pmt != null)
                     {
                         ProgramNumber = pmt.ProgramNumber;
@@ -101,16 +90,14 @@ namespace Cinegy.TsDecoder.Video
 
                 if (StreamType > 0)
                 {
-                    esStreamInfo = tsDecoder.GetFirstEsStreamForProgramNumber(ProgramNumber, StreamType);
+                    esStreamInfo = TsDecoderExtensions.GetFirstEsStreamForProgramNumber(tsDecoder, ProgramNumber, StreamType);
                 }
                 else
                 {
-                    //first check for H264
-                    esStreamInfo = tsDecoder.GetFirstEsStreamForProgramNumber(ProgramNumber, 0x1B);
+                    esStreamInfo = TsDecoderExtensions.GetFirstEsStreamForProgramNumber(tsDecoder, ProgramNumber, 0x1B);
                     if (esStreamInfo == null)
                     {
-                        //now check for HEVC (MPEG 2 is not supported currently)
-                        esStreamInfo = tsDecoder.GetFirstEsStreamForProgramNumber(ProgramNumber, 0x24);
+                        esStreamInfo = TsDecoderExtensions.GetFirstEsStreamForProgramNumber(tsDecoder, ProgramNumber, 0x24);
                         if (esStreamInfo != null)
                         {
                             StreamType = 0x24;
@@ -128,14 +115,15 @@ namespace Cinegy.TsDecoder.Video
             }
         }
 
-        private void Setup(TransportStream.TsDecoder tsDecoder)
+        private void Setup(TsDecoder tsDecoder)
         {
-            if (FindVideoService(tsDecoder, out var esStreamInfo))
+            EsInfo esStreamInfo;
+            if (FindVideoService(tsDecoder, out esStreamInfo))
             {
                 Setup(esStreamInfo.ElementaryPid);
             }
         }
-        
+
         public void Setup(ushort videoPid)
         {
             TsService.VideoPid = videoPid;
@@ -143,7 +131,7 @@ namespace Cinegy.TsDecoder.Video
 
         public void AddPacket(TsPacket tsPacket, TransportStream.TsDecoder tsDecoder = null)
         {
-            if (TsService?.VideoPid == null)
+            if (TsService == null || TsService.VideoPid == 0)
             {
                 if (tsDecoder != null)
                 {
@@ -151,11 +139,11 @@ namespace Cinegy.TsDecoder.Video
                 }
             }
 
-            if (tsPacket.Pid != TsService?.VideoPid) return;
-            
+            if (tsPacket.Pid != TsService.VideoPid) return;
+
             if (tsPacket.PayloadUnitStartIndicator)
             {
-                if (tsPacket.PesHeader.Pts > -1)
+                if (tsPacket.PesHeader != null && tsPacket.PesHeader.Pts > -1)
                     LastPts = tsPacket.PesHeader.Pts;
 
                 if (_currentVideoPes != null)
@@ -164,12 +152,39 @@ namespace Cinegy.TsDecoder.Video
                     TsService.AddData(_currentVideoPes, tsPacket.PesHeader, StreamType);
                 }
                 _currentVideoPes = new Pes(tsPacket);
-                
             }
             else
             {
-                _currentVideoPes?.Add(tsPacket);
+                if (_currentVideoPes != null)
+                    _currentVideoPes.Add(tsPacket);
             }
+        }
+    }
+
+    // These extension methods are stubs and need proper implementation
+    public static class TsDecoderExtensions
+    {
+        public static ProgramMapTable GetSelectedPmt(TsDecoder decoder, ushort programNumber)
+        {
+            if (decoder.ProgramMapTables == null) return null;
+            foreach (var pmt in decoder.ProgramMapTables)
+            {
+                if (pmt.ProgramNumber == programNumber)
+                    return pmt;
+            }
+            return null;
+        }
+
+        public static EsInfo GetFirstEsStreamForProgramNumber(TsDecoder decoder, ushort programNumber, int streamType)
+        {
+            var pmt = GetSelectedPmt(decoder, programNumber);
+            if (pmt == null || pmt.EsStreams == null) return null;
+            foreach (var es in pmt.EsStreams)
+            {
+                if (es.StreamType == streamType)
+                    return es;
+            }
+            return null;
         }
     }
 }

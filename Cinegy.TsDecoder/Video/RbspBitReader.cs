@@ -16,41 +16,43 @@
 using System;
 using Cinegy.TsDecoder.DataAccess;
 
-namespace Cinegy.TsDecoder.Video;
-
-public class RbspBitReader : BitReader
+namespace Cinegy.TsDecoder.Video
 {
-    //public byte[] RbspData { get; private set; }
 
-    public RbspBitReader(byte[] buf) : base(buf)
+    public class RbspBitReader : BitReader
     {
-        //RbspData = new byte[buf.Length];
-        //var bw = new BitWriter(RbspData);
-        //while (More_RBSP_Data())
-        //{
-        //    bw.Put_Bool(Get_Bool());
-        //}
-    }
-    
-    public bool RBSP_Trailing_Bits()
-    {
-        if (BitsLeft <= 0)
-            return false;
+        //public byte[] RbspData { get; private set; }
 
-        var rbsp_stop_bit = Get_Bits(1);
-        //int rbsp_alignment_zero_bits = Show_Bits(BitsToAlign());
-        var rbsp_zero_bits = Show_Bits(Math.Min(23, BitsLeft)); // aligning_bits + next_start_code_bits
+        public RbspBitReader(byte[] buf) : base(buf)
+        {
+            //RbspData = new byte[buf.Length];
+            //var bw = new BitWriter(RbspData);
+            //while (More_RBSP_Data())
+            //{
+            //    bw.Put_Bool(Get_Bool());
+            //}
+        }
 
-        Unget_Bits(1);
+        public bool RBSP_Trailing_Bits()
+        {
+            if (BitsLeft <= 0)
+                return false;
 
-        return rbsp_stop_bit == 1 && rbsp_zero_bits == 0;
-    }
-    
-    public bool More_RBSP_Data()
-    {
-        if (BitsLeft <= 0)
-            return false;
+            var rbsp_stop_bit = Get_Bits(1);
+            //int rbsp_alignment_zero_bits = Show_Bits(BitsToAlign());
+            var rbsp_zero_bits = Show_Bits(Math.Min(23, BitsLeft)); // aligning_bits + next_start_code_bits
 
-        return !RBSP_Trailing_Bits();
+            Unget_Bits(1);
+
+            return rbsp_stop_bit == 1 && rbsp_zero_bits == 0;
+        }
+
+        public bool More_RBSP_Data()
+        {
+            if (BitsLeft <= 0)
+                return false;
+
+            return !RBSP_Trailing_Bits();
+        }
     }
 }

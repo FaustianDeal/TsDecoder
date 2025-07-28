@@ -16,16 +16,18 @@
 using System;
 using System.Collections.Generic;
 
-namespace Cinegy.TsDecoder.Video;
-
-public delegate void NalUnitsReadyEventHandler(object sender, NalUnitReadyEventArgs args);
-
-public class NalUnitReadyEventArgs : EventArgs
+namespace Cinegy.TsDecoder.Video
 {
-    public List<INalUnit> NalUnits { get; set; }
 
-    public NalUnitReadyEventArgs(List<INalUnit> units)
+    public delegate void NalUnitsReadyEventHandler(object sender, NalUnitReadyEventArgs args);
+
+    public class NalUnitReadyEventArgs : EventArgs
     {
-        NalUnits = units;
+        public List<INalUnit> NalUnits { get; set; }
+
+        public NalUnitReadyEventArgs(List<INalUnit> units)
+        {
+            NalUnits = units;
+        }
     }
 }

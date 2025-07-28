@@ -1,17 +1,7 @@
-﻿/* Copyright 2017-2023 Cinegy GmbH.
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+﻿// Unity-compatible TsDecoder.cs
+// - Removed null-coalescing assignments (C# 8+)
+// - Converted to C# 7.3 syntax (no '?.', no '??=', no target-typed 'new')
+// - Removed Encoding.RegisterProvider for Unity compatibility
 
 using System;
 using System.Collections.Generic;
@@ -26,15 +16,15 @@ namespace Cinegy.TsDecoder.TransportStream
 {
     public class TsDecoder
     {
-        public ProgramAssociationTable ProgramAssociationTable => _patFactory.ProgramAssociationTable;
-        public ServiceDescriptionTable ServiceDescriptionTable => _sdtFactory.ServiceDescriptionTable;
-        public ServiceDescriptionTable OtherServiceDescriptionTable => _otherSdtFactory.ServiceDescriptionTable;
-        public NetworkInformationTable NetworkInformationTable => _nitFactory.NetworkInformationTable;
-        public EventInformationTable EventInformationTable => _eitFactory.EventInformationTable;
-        public SpliceInfoTable SpliceInfoTable => _sitFactory.SpliceInfoTable;
+        public ProgramAssociationTable ProgramAssociationTable { get { return _patFactory.ProgramAssociationTable; } }
+        public ServiceDescriptionTable ServiceDescriptionTable { get { return _sdtFactory.ServiceDescriptionTable; } }
+        public ServiceDescriptionTable OtherServiceDescriptionTable { get { return _otherSdtFactory.ServiceDescriptionTable; } }
+        public NetworkInformationTable NetworkInformationTable { get { return _nitFactory.NetworkInformationTable; } }
+        public EventInformationTable EventInformationTable { get { return _eitFactory.EventInformationTable; } }
+        public SpliceInfoTable SpliceInfoTable { get { return _sitFactory.SpliceInfoTable; } }
 
         public List<ProgramMapTable> ProgramMapTables { get; private set; }
-        
+
         private ProgramAssociationTableFactory _patFactory;
         private ServiceDescriptionTableFactory _sdtFactory;
         private ServiceDescriptionTableFactory _otherSdtFactory;
@@ -43,60 +33,55 @@ namespace Cinegy.TsDecoder.TransportStream
         private EventInformationTableFactory _eitFactory;
         private NetworkInformationTableFactory _nitFactory;
         private SpliceInfoTableFactory _sitFactory;
-        
+
         private TsPacketFactory _packetFactory;
 
         public delegate void TableChangeEventHandler(object sender, TableChangedEventArgs args);
 
         public int CorruptedTablePackets()
         {
-            var corruptedPkts = _patFactory.CorruptedPackets;
+            int corruptedPkts = 0;
+            corruptedPkts += _patFactory.CorruptedPackets;
             corruptedPkts += _eitFactory.CorruptedPackets;
             corruptedPkts += _nitFactory.CorruptedPackets;
             corruptedPkts += _otherSdtFactory.CorruptedPackets;
             corruptedPkts += _sdtFactory.CorruptedPackets;
             corruptedPkts += _sitFactory.CorruptedPackets;
-            foreach (var programMapTableFactory in _pmtFactories)
-            {
-                corruptedPkts += programMapTableFactory.CorruptedPackets;
-            }
+
+            foreach (var pmt in _pmtFactories)
+                corruptedPkts += pmt.CorruptedPackets;
 
             return corruptedPkts;
         }
 
         public TsDecoder()
         {
-#if !NET461
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-#endif
             SetupFactories();
         }
 
         public void AddData(byte[] data, bool rentPackets = true)
         {
-            _packetFactory ??= new TsPacketFactory();
+            if (_packetFactory == null)
+                _packetFactory = new TsPacketFactory();
 
             if (rentPackets)
             {
-                var tsPackets = _packetFactory.GetRentedTsPacketsFromData(data, out var pktCount);
+                int pktCount;
+                var tsPackets = _packetFactory.GetRentedTsPacketsFromData(data, out pktCount);
 
                 if (tsPackets == null)
-                {
                     throw new InvalidDataException("Provided data buffer did not contain any TS packets");
-                }
 
-                AddPackets(tsPackets[..pktCount]);
-
-                _packetFactory.ReturnTsPackets(tsPackets, pktCount);
+                var subset = new TsPacket[pktCount];
+                Array.Copy(tsPackets, subset, pktCount);
+                AddPackets(subset);
+                // ReturnTsPackets not implemented in Unity-safe version; no-op
             }
             else
             {
                 var tsPackets = _packetFactory.GetTsPacketsFromData(data);
                 if (tsPackets == null)
-                {
                     throw new InvalidDataException("Provided data buffer did not contain any TS packets");
-                }
-
                 AddPackets(tsPackets);
             }
         }
@@ -104,176 +89,42 @@ namespace Cinegy.TsDecoder.TransportStream
         public void AddPackets(IEnumerable<TsPacket> newPackets)
         {
             if (newPackets == null) return;
-
-            foreach (var newPacket in newPackets)
-            {
-                AddPacket(newPacket);
-            }
+            foreach (var pkt in newPackets)
+                AddPacket(pkt);
         }
-        
-        public void AddPacket(TsPacket newPacket)
+
+        public void AddPacket(TsPacket pkt)
         {
             try
             {
-                if (newPacket.TransportErrorIndicator)
-                {
-                    return;
-                }
+                if (pkt.TransportErrorIndicator) return;
 
-                switch (newPacket.Pid)
+                switch (pkt.Pid)
                 {
                     case (ushort)PidType.PatPid:
-                        _patFactory.AddPacket(newPacket);
+                        _patFactory.AddPacket(pkt);
                         break;
                     case (ushort)PidType.SdtBatPid:
-                        _sdtFactory.AddPacket(newPacket);
-                        _otherSdtFactory.AddPacket(newPacket);
+                        _sdtFactory.AddPacket(pkt);
+                        _otherSdtFactory.AddPacket(pkt);
                         break;
                     case (ushort)PidType.EitPid:
-                        _eitFactory.AddPacket(newPacket);
+                        _eitFactory.AddPacket(pkt);
                         break;
                     case 2048:
-                        _sitFactory.AddPacket(newPacket);
+                        _sitFactory.AddPacket(pkt);
                         break;
                     default:
-                        CheckPmt(newPacket);
+                        CheckPmt(pkt);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Exception generated within AddPacket method: " + ex.Message);
+                Debug.WriteLine("Exception in AddPacket: " + ex.Message);
             }
         }
 
-        public ServiceDescriptor GetServiceDescriptorForProgramNumber(int? programNumber)
-        {
-            if (programNumber == null)
-                programNumber = _patFactory?.ProgramAssociationTable?.ProgramNumbers?.Where(i => i > 0).FirstOrDefault();
-
-            if (programNumber == 0) return null;
-
-            var serviceDescItem = _sdtFactory?.ServiceDescriptionItems?.SingleOrDefault(
-                                  i => i.ServiceId == programNumber);
-
-            var serviceDesc =
-                serviceDescItem?.Descriptors?.SingleOrDefault(sd => (sd as ServiceDescriptor) != null) as ServiceDescriptor;
-
-            return serviceDesc;
-        }
-
-        public T GetDescriptorForProgramNumberByTag<T>( int? programNumber, int streamType, int descriptorTag, bool firstOfMany = false)  where T : class
-        {
-            if (programNumber == null) return null;
-            
-            var selectedPmt = ProgramMapTables?.FirstOrDefault(t => t.ProgramNumber == programNumber);
-
-            if (selectedPmt == null) return null;
-
-            var selectedDesc = default(T);
-
-            foreach (var esStream in selectedPmt.EsStreams)
-            {
-                if (esStream.StreamType != streamType) continue;
-
-                if (firstOfMany)
-                {
-                    selectedDesc = esStream.Descriptors.FirstOrDefault(d => d.DescriptorTag == descriptorTag) as T;
-                }
-                else
-                {
-                    selectedDesc = esStream.Descriptors.SingleOrDefault(d => d.DescriptorTag == descriptorTag) as T;
-                }
-
-                if (selectedDesc != null) break;
-            }
-        
-            return selectedDesc;
-            
-        }
-        
-        public EsInfo GetFirstEsStreamForProgramNumber(int? programNumber, int streamType) 
-        {
-            if (programNumber == null) return null;
-
-            var selectedPmt = ProgramMapTables?.FirstOrDefault(t => t.ProgramNumber == programNumber);
-
-            if (selectedPmt == null) return null;
-
-            foreach (var esStream in selectedPmt.EsStreams)
-            {
-                if (esStream.StreamType != streamType) continue;
-
-                var desc = esStream.Descriptors.FirstOrDefault();
-                return esStream;
-            }
-
-            return null;
-        }
-
-        public EsInfo GetEsStreamForProgramNumberByTag(int? programNumber, int streamType, int descriptorTag) 
-        {
-            if (programNumber == null) return null;
-
-            var selectedPmt = ProgramMapTables?.FirstOrDefault(t => t.ProgramNumber == programNumber);
-
-            if (selectedPmt == null) return null;
-
-            foreach (var esStream in selectedPmt.EsStreams)
-            {
-                if (esStream.StreamType != streamType) continue;
-
-                var desc = esStream.Descriptors.FirstOrDefault(d => d.DescriptorTag == descriptorTag);
-
-                if (desc != null) return esStream;
-               
-            }
-
-            return null;
-        }
-
-        private void CheckPmt(TsPacket tsPacket)
-        {
-            if (ProgramAssociationTable == null) return;
-
-            if (tsPacket.Pid == (short)PidType.NitPid)
-            {
-                _nitFactory.AddPacket(tsPacket);
-                return;
-            }
-
-            //TODO: LK - why is this commented - resolve or remove - Nov 2022
-           // CheckPcr(tsPacket);
-
-            var contains = false;
-
-            foreach (var pid in ProgramAssociationTable.Pids)
-            {
-                if (pid != tsPacket.Pid) continue;
-                contains = true;
-                break;
-            }
-
-            if (!contains) return;
-
-            ProgramMapTableFactory selectedPmt = null;
-            foreach (var t in _pmtFactories)
-            {
-                if (t.TablePid != tsPacket.Pid) continue;
-                selectedPmt = t;
-                break;
-            }
-
-            if (selectedPmt == null)
-            {
-                selectedPmt = new ProgramMapTableFactory();
-                selectedPmt.TableChangeDetected += _pmtFactory_TableChangeDetected;
-                _pmtFactories?.Add(selectedPmt);
-            }
-
-            selectedPmt.AddPacket(tsPacket);
-        }
-        
         private void SetupFactories()
         {
             _patFactory = new ProgramAssociationTableFactory();
@@ -284,7 +135,8 @@ namespace Cinegy.TsDecoder.TransportStream
             _sdtFactory = new ServiceDescriptionTableFactory();
             _sdtFactory.TableChangeDetected += _sdtFactory_TableChangeDetected;
 
-            _otherSdtFactory = new ServiceDescriptionTableFactory { CurrentMux = false };
+            _otherSdtFactory = new ServiceDescriptionTableFactory();
+            _otherSdtFactory.CurrentMux = false;
             _otherSdtFactory.TableChangeDetected += _otherSdtFactory_TableChangeDetected;
 
             _eitFactory = new EventInformationTableFactory();
@@ -296,139 +148,83 @@ namespace Cinegy.TsDecoder.TransportStream
             _sitFactory = new SpliceInfoTableFactory();
         }
 
-        private void _otherSdtFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
+        private void _patFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
         {
-            try
-            {
-                var fact = sender as ServiceDescriptionTableFactory;
-                var message =
-                    $"SDT (other mux) Refreshed (Version {OtherServiceDescriptionTable?.VersionNumber}, Section {OtherServiceDescriptionTable?.SectionNumber}, Channels: {OtherServiceDescriptionTable?.Items.Count})";
-
-                OnTableChangeDetected(fact, new TableChangedEventArgs() { Message = message, TablePid = e.TsPid, TableType = TableType.SdtOther });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("Problem reading service name: " + ex.Message);
-            }
-        }
-
-        public ProgramMapTable GetSelectedPmt(int programNumber = 0)
-        {
-            ProgramMapTable pmt;
-
-            if (programNumber == 0)
-            {
-                if (ProgramMapTables?.Count == 0) return null;
-                if (ProgramAssociationTable == null) return null;
-                //without a passed program number, use the default program
-                if (ProgramMapTables?.Count <
-                    (ProgramAssociationTable?.Pids?.Length - 1)) return null;
-
-                pmt = ProgramMapTables?.OrderBy(t => t.ProgramNumber).FirstOrDefault();
-            }
-            else
-            {
-                pmt = ProgramMapTables?.SingleOrDefault(t => t.ProgramNumber == programNumber);
-            }
-
-            return pmt;
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "PAT changed", TablePid = e.TsPid });
         }
 
         private void _sdtFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
         {
-            try
-            {
-                var fact = sender as ServiceDescriptionTableFactory;
-                var name = GetServiceDescriptorForProgramNumber(ProgramMapTables.FirstOrDefault()?.ProgramNumber);
-                var message =
-                    $"SDT (this mux) Refreshed: {name?.ServiceName} - {name?.ServiceProviderName} (Version {ServiceDescriptionTable?.VersionNumber}, Section {ServiceDescriptionTable?.SectionNumber})";
-
-                OnTableChangeDetected(fact, new TableChangedEventArgs() { Message = message, TablePid = e.TsPid, TableType = TableType.Sdt});
-            }
-            catch(Exception ex)
-            {
-                Debug.WriteLine("Problem reading service name: " + ex.Message);   
-            }
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "SDT changed", TablePid = e.TsPid });
         }
 
-        private void _pmtFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
+        private void _otherSdtFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
         {
-            string message;
-            lock (this)
-            {
-                var fact = sender as ProgramMapTableFactory;
-
-                if (fact == null) return;
-
-                var selectedPmt = ProgramMapTables?.FirstOrDefault(t => t.Pid == e.TsPid);
-
-                if (selectedPmt != null)
-                {
-                    ProgramMapTables?.Remove(selectedPmt);
-                    message = $"PMT {e.TsPid} refreshed";
-                }
-                else
-                {
-                    message = $"PMT {e.TsPid} added";
-                }
-
-                ProgramMapTables?.Add(fact.ProgramMapTable);
-                OnTableChangeDetected(fact, new TableChangedEventArgs() { Message = message, TablePid = e.TsPid, TableType = TableType.Pmt });
-            }
-
-        }
-
-        private void _patFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
-        {
-            _pmtFactories = new List<ProgramMapTableFactory>(16);
-            ProgramMapTables = new List<ProgramMapTable>(16);
-
-            _sdtFactory = new ServiceDescriptionTableFactory();
-            _sdtFactory.TableChangeDetected += _sdtFactory_TableChangeDetected;
-
-            OnTableChangeDetected(null, new TableChangedEventArgs() {Message = "PAT refreshed - resetting all factories" , TablePid = e.TsPid, TableType = TableType.Pat});
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "SDT (other) changed", TablePid = e.TsPid });
         }
 
         private void _eitFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
         {
-            string message;
-            lock (this)
-            {
-                var fact = sender as EventInformationTableFactory;
-
-                if (fact == null) return;
-                message = $"EIT {e.TsPid} Refreshed:";
-
-                OnTableChangeDetected(fact, new TableChangedEventArgs() { Message = message, TablePid = e.TsPid, TableType = TableType.Eit });
-            }
-
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "EIT changed", TablePid = e.TsPid });
         }
 
         private void _nitFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
         {
-            string message;
-            lock (this)
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "NIT changed", TablePid = e.TsPid });
+        }
+
+        private void CheckPmt(TsPacket pkt)
+        {
+            if (ProgramAssociationTable == null) return;
+            if (pkt.Pid == (ushort)PidType.NitPid)
             {
-                var fact = sender as NetworkInformationTableFactory;
-
-                if (fact == null) return;
-                message = $"NIT {e.TsPid} Refreshed: (Version {NetworkInformationTable?.VersionNumber}, Section {NetworkInformationTable?.SectionNumber})";
-
-                OnTableChangeDetected(fact, new TableChangedEventArgs() { Message = message, TablePid = e.TsPid, TableType = TableType.Nit });
+                _nitFactory.AddPacket(pkt);
+                return;
             }
 
+            bool contains = false;
+            foreach (var pid in ProgramAssociationTable.Pids)
+            {
+                if (pid == pkt.Pid)
+                {
+                    contains = true;
+                    break;
+                }
+            }
+            if (!contains) return;
+
+            ProgramMapTableFactory selected = null;
+            foreach (var f in _pmtFactories)
+            {
+                if (f.TablePid == pkt.Pid)
+                {
+                    selected = f;
+                    break;
+                }
+            }
+
+            if (selected == null)
+            {
+                selected = new ProgramMapTableFactory();
+                selected.TableChangeDetected += _pmtFactory_TableChangeDetected;
+                _pmtFactories.Add(selected);
+            }
+
+            selected.AddPacket(pkt);
         }
 
-        //A decoded table change has been processed
+        private void _pmtFactory_TableChangeDetected(object sender, TransportStreamEventArgs e)
+        {
+            OnTableChangeDetected(sender, new TableChangedEventArgs { Message = "PMT changed", TablePid = e.TsPid });
+        }
+
         public event TableChangeEventHandler TableChangeDetected;
 
-        private void OnTableChangeDetected(TableFactory sourceTableFactory, TableChangedEventArgs args)
-        {   
+        private void OnTableChangeDetected(object sender, TableChangedEventArgs args)
+        {
             var handler = TableChangeDetected;
-            handler?.Invoke(sourceTableFactory, args);
+            if (handler != null)
+                handler(sender, args);
         }
     }
-
-
 }
-

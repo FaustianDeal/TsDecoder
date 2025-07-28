@@ -18,76 +18,82 @@ using System.Data;
 using System.IO;
 using Cinegy.TsDecoder.DataAccess;
 
-namespace Cinegy.TsDecoder.Video;
-
-public struct SeiMessage
+namespace Cinegy.TsDecoder.Video
 {
-    public uint Type { get; set; }
 
-    public uint PayloadSize { get; set; }
-
-    public byte[] Payload { get; set; }
-
-    public void Init(RbspBitReader bitReader)
+    public struct SeiMessage
     {
-        byte currentByte = 0xFF;
-        while (currentByte == 0xFF)
-        {
-            currentByte = (byte)bitReader.Get_Bits(8);
-            Type += currentByte;
-        }
-           
-        currentByte = 0xFF;
-        while (currentByte == 0xFF)
-        {
-            currentByte = (byte)bitReader.Get_Bits(8);
-            PayloadSize += currentByte;
-        }
+        public uint Type { get; set; }
 
-        Payload = new byte[PayloadSize];
-        
-        for(var i = 0; i < PayloadSize; i++){
-            Payload[i] = (byte)bitReader.Get_Bits(8);
-        }
-    }
-    
-    public void Init(byte[] data, int offset, int length)
-    {
-        var dataPos = offset;
-        var dataEndPos = offset + length;
+        public uint PayloadSize { get; set; }
 
-        byte currentByte = 0xFF;
-        while (currentByte == 0xFF)
+        public byte[] Payload { get; set; }
+
+        public void Init(RbspBitReader bitReader)
         {
-            if (dataPos >= dataEndPos)
+            byte currentByte = 0xFF;
+            while (currentByte == 0xFF)
             {
-                throw new InvalidDataException(
-                    "Corrupted SEI message buffer - attempted to read SEI type past end of buffer");
+                currentByte = (byte)bitReader.Get_Bits(8);
+                Type += currentByte;
             }
 
-            currentByte = data[dataPos++];
-            Type += currentByte;
+            currentByte = 0xFF;
+            while (currentByte == 0xFF)
+            {
+                currentByte = (byte)bitReader.Get_Bits(8);
+                PayloadSize += currentByte;
+            }
+
+            Payload = new byte[PayloadSize];
+
+            for (var i = 0; i < PayloadSize; i++)
+            {
+                Payload[i] = (byte)bitReader.Get_Bits(8);
+            }
         }
-            
-        currentByte = 0xFF;
-        while (currentByte == 0xFF)
+
+        public void Init(byte[] data, int offset, int length)
         {
-            if (dataPos >= dataEndPos)
+            var dataPos = offset;
+            var dataEndPos = offset + length;
+
+            byte currentByte = 0xFF;
+            while (currentByte == 0xFF)
+            {
+                if (dataPos >= dataEndPos)
+                {
+                    throw new InvalidDataException(
+                        "Corrupted SEI message buffer - attempted to read SEI type past end of buffer");
+                }
+
+                currentByte = data[dataPos++];
+                Type += currentByte;
+            }
+
+            currentByte = 0xFF;
+            while (currentByte == 0xFF)
+            {
+                if (dataPos >= dataEndPos)
+                {
+                    throw new InvalidDataException(
+                        "Corrupted SEI message buffer - attempted to read SEI payload size past end of buffer");
+                }
+
+                currentByte = data[dataPos++];
+                PayloadSize += currentByte;
+            }
+
+            if (dataPos + PayloadSize != dataEndPos)
             {
                 throw new InvalidDataException(
-                    "Corrupted SEI message buffer - attempted to read SEI payload size past end of buffer");
+                    "Corrupted SEI message buffer - payload size indicated does not fit final extent of data buffer provided");
             }
-            currentByte = data[dataPos++];
-            PayloadSize += currentByte;
+
+            Buffer.BlockCopy(data, dataPos, Payload, 0, (int)PayloadSize);
+
+            //Buffer.BlockCopy(data[dataPos..dataEndPos], 0, Payload, 0, (int)PayloadSize);
         }
 
-        if (dataPos + PayloadSize != dataEndPos)
-        {
-            throw new InvalidDataException(
-                "Corrupted SEI message buffer - payload size indicated does not fit final extent of data buffer provided");
-        }
-
-        Buffer.BlockCopy(data[dataPos..dataEndPos],0,Payload,0,(int)PayloadSize);
     }
-    
 }

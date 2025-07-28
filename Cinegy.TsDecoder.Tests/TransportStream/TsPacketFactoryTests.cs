@@ -239,7 +239,7 @@ namespace Cinegy.TsDecoder.Tests.TransportStream
 
             foreach (var serviceDescriptionItem in decoder.ServiceDescriptionTable.Items)
             {
-                Console.WriteLine(decoder.GetServiceDescriptorForProgramNumber(serviceDescriptionItem.ServiceId).ServiceName);
+                //Console.WriteLine(decoder.GetServiceDescriptorForProgramNumber(serviceDescriptionItem.ServiceId).ServiceName);
             }
         }
 

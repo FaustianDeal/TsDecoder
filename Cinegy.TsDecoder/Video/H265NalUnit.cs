@@ -13,6 +13,7 @@
   limitations under the License.
 */
 
+using System;
 using System.IO;
 
 namespace Cinegy.TsDecoder.Video
@@ -36,25 +37,28 @@ namespace Cinegy.TsDecoder.Video
 
         public sealed override void Init(byte[] data, int offset, int length)
         {
-            var nalUnitStart = FindNalUnit(data[..length], offset, out var nalUnitLength);
+            var limitedData = new byte[length];
+            Buffer.BlockCopy(data, 0, limitedData, 0, length);
+
+            var nalUnitStart = FindNalUnit(limitedData, offset, out var nalUnitLength);
             var dataPos = nalUnitStart;
-            UnitType = (int)(data[dataPos] & 0b01111110)>>1;
+            UnitType = (int)(limitedData[dataPos] & 0b01111110)>>1;
             dataPos+=2;
             var numBytesInRbsp = 0;
             
             RbspData = new byte[nalUnitLength - 2];
             for (var i = 2; i < nalUnitLength; i++)
             {
-                if (i + 2 < nalUnitLength && data[dataPos] == 0 && data[dataPos + 1] == 0 && data[dataPos + 2] == 0x3)
+                if (i + 2 < nalUnitLength && limitedData[dataPos] == 0 && limitedData[dataPos + 1] == 0 && limitedData[dataPos + 2] == 0x3)
                 {
-                    RbspData[numBytesInRbsp++] = data[dataPos++];
-                    RbspData[numBytesInRbsp++] = data[dataPos++];
+                    RbspData[numBytesInRbsp++] = limitedData[dataPos++];
+                    RbspData[numBytesInRbsp++] = limitedData[dataPos++];
                     dataPos++;
                     i += 2;
                 }
                 else
                 {
-                    RbspData[numBytesInRbsp++] = data[dataPos++];
+                    RbspData[numBytesInRbsp++] = limitedData[dataPos++];
                 }
             }
 
@@ -81,17 +85,14 @@ namespace Cinegy.TsDecoder.Video
             else
             {
                 //corrupt data
-                //TODO: Don't except here, since corruption in stream will trigger exception storm and kill things...
                 throw new InvalidDataException("Could not find start code in NAL unit data");
             }
 
             if ((data[dataPos] & 0b10000000) != 0)
             {
-                //TODO: Don't except here, since corruption in stream will trigger exception storm and kill things...
                 throw new InvalidDataException("NAL unit forbidden zero bit is not zero");
             }
             
-            //set the start position to after the 3-byte start code (Table 7.3.1 shows the NAL unit defined exclusive of a start code)
             var startPosition = dataPos;
 
             while (dataPos + 3 < data.Length)
@@ -99,7 +100,6 @@ namespace Cinegy.TsDecoder.Video
                 if (data[dataPos] == 0 && data[dataPos + 1] == 0 && data[dataPos + 2] == 1)
                 {
                     break;
-                    //encountered next start code - trailing start codes are always only 001 as prior zeros are considered 'trailing zero 8 bits' at end of last NAL
                 }
                 else
                 {

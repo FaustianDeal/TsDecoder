@@ -13,17 +13,18 @@
   limitations under the License.
 */
 
-using System.Text.Json.Serialization;
+//using System.Text.Json.Serialization;
 
-namespace Cinegy.TsDecoder.Video;
-
-public abstract class NalUnit : INalUnit
+namespace Cinegy.TsDecoder.Video
 {
-    public abstract void Init(byte[] sourceData, int offset, int length);
 
-    public int NalUnitSize { get; internal set; }
+    public abstract class NalUnit : INalUnit
+    {
+        public abstract void Init(byte[] sourceData, int offset, int length);
 
-    [JsonIgnore]
-    public int ReadBytes { get; internal set; }
+        public int NalUnitSize { get; internal set; }
 
+        public int ReadBytes { get; internal set; }
+
+    }
 }
